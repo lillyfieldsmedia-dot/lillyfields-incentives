@@ -24,6 +24,7 @@ interface IncentiveRow {
 export function DashboardPage() {
   const { role, user } = useAuth()
   const [incentives, setIncentives] = useState<IncentiveRow[]>([])
+  const [companyTotals, setCompanyTotals] = useState<{ total_amount: number; total_count: number; unique_staff: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [filterStaff, setFilterStaff] = useState('')
   const [filterManager, setFilterManager] = useState('')
@@ -40,7 +41,16 @@ export function DashboardPage() {
 
   useEffect(() => {
     fetchIncentives()
+    fetchCompanyTotals()
   }, [role, user])
+
+  const fetchCompanyTotals = async () => {
+    const { data } = await supabase.rpc('get_period_totals', {
+      period_start: payroll.start,
+      period_end: payroll.end,
+    })
+    if (data) setCompanyTotals(data as { total_amount: number; total_count: number; unique_staff: number })
+  }
 
   const fetchIncentives = async () => {
     let query = supabase
@@ -59,8 +69,10 @@ export function DashboardPage() {
     setLoading(false)
   }
 
-  const totalAmount = incentives.reduce((sum, i) => sum + i.amount, 0)
-  const uniqueStaff = new Set(incentives.map((i) => i.staff?.id)).size
+  const myTotalAmount = incentives.reduce((sum, i) => sum + i.amount, 0)
+  const companyTotal = companyTotals?.total_amount ?? myTotalAmount
+  const companyCount = companyTotals?.total_count ?? incentives.length
+  const companyStaff = companyTotals?.unique_staff ?? new Set(incentives.map((i) => i.staff?.id)).size
 
   const filtered = incentives.filter((i) => {
     if (filterStaff && !i.staff?.name?.toLowerCase().includes(filterStaff.toLowerCase())) return false
@@ -109,7 +121,8 @@ export function DashboardPage() {
           Cutoff: {formatDate(payroll.end)}
         </span>
       </div>
-      <p className="mb-2 text-4xl font-bold text-primary">{formatCurrency(totalAmount)}</p>
+      <p className="mb-1 text-4xl font-bold text-primary">{formatCurrency(companyTotal)}</p>
+      <p className="mb-2 text-sm text-muted-foreground">Company total</p>
       {daysUntilCutoff <= 5 && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           <Clock className="h-4 w-4 shrink-0" />
@@ -121,40 +134,53 @@ export function DashboardPage() {
       )}
 
       {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <PoundSterling className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{formatCurrency(totalAmount)}</p>
-              <p className="text-xs text-muted-foreground">This period total</p>
+              <p className="text-2xl font-bold">{formatCurrency(companyTotal)}</p>
+              <p className="text-xs text-muted-foreground">Company total</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Hash className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{incentives.length}</p>
-              <p className="text-xs text-muted-foreground">Incentives this period</p>
+              <p className="text-2xl font-bold">{companyCount}</p>
+              <p className="text-xs text-muted-foreground">Total incentives</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{uniqueStaff}</p>
+              <p className="text-2xl font-bold">{companyStaff}</p>
               <p className="text-xs text-muted-foreground">Staff received</p>
             </div>
           </CardContent>
         </Card>
+        {!isFullAccess && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                <PoundSterling className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{formatCurrency(myTotalAmount)}</p>
+                <p className="text-xs text-muted-foreground">Your total</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Filters for finance/admin */}
