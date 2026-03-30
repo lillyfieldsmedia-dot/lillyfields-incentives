@@ -21,7 +21,7 @@ export function LoginPage() {
 
     const { error: signInError } = await signIn(email, password)
     if (signInError) {
-      setError('Invalid email or password')
+      setError(signInError.message || 'Invalid email or password')
       setLoading(false)
     } else {
       navigate('/')
