@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(/opt/homebrew/bin/brew --version)",
+      "Bash(/usr/local/bin/brew --version)",
+      "mcp__mcp-registry__search_mcp_registry",
+      "Bash(curl -s -X POST \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/signup\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"testuser@lillyfields.test\"\",\"\"password\"\":\"\"TestPass123!\"\"}')",
+      "Bash(curl -s -X POST \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/signup\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"testuser@lillyfields.test\"\",\"\"password\"\":\"\"TestPass1234\"\"}\")",
+      "Bash(curl -s -X POST \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/token?grant_type=password\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"robert.jones@lillyfieldscare.com\"\",\"\"password\"\":\"\"Test1234\"\"}\")",
+      "Bash(curl -s -X POST \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/token?grant_type=password\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"robert.jones@lillyfieldscare.com\"\",\"\"password\"\":\"\"Lillyfields2026\"\"}\")",
+      "Bash(curl -s \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/settings\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\")",
+      "Bash(curl -s -X POST \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/token?grant_type=password\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"gixxejones@outlook.com\"\",\"\"password\"\":\"\"1234\"\"}\")",
+      "Bash(curl -s -X POST \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/signup\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"gixxejones@outlook.com\"\",\"\"password\"\":\"\"Lillyfields2026\"\"}\")",
+      "Bash(curl -s -X POST \"https://jperqpxnuetwbjxtvwnc.supabase.co/auth/v1/token?grant_type=password\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"gixxejones@outlook.com\"\",\"\"password\"\":\"\"Lillyfields2026\"\"}\")",
+      "Bash(curl -s \"https://lillyfields-incentives.netlify.app/assets/\")",
+      "Bash(curl -s \"https://lillyfields-incentives.netlify.app/\")",
+      "Bash(curl -s \"https://lillyfields-incentives.netlify.app/assets/index-CnP9BdRq.js\")",
+      "Bash(curl -s -X POST \"http://localhost:5173\" -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s \"http://localhost:5173/\" -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s \"https://jperqpxnuetwbjxtvwnc.supabase.co/rest/v1/profiles\" -H \"apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwZXJxcHhudWV0d2JqeHR2d25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTkzMjksImV4cCI6MjA5MDQ3NTMyOX0.jgX6cSr6fjb5oTaj5SHAeSmoSK59h0rxhVcwLAGZNM8\")",
+      "Bash(curl -sI \"https://lillyfields-incentives.netlify.app/\")",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

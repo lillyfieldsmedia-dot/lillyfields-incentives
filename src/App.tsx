@@ -8,6 +8,7 @@ import { LogIncentivePage } from '@/pages/LogIncentivePage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { StaffPage } from '@/pages/StaffPage'
 import { UsersPage } from '@/pages/UsersPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -76,6 +77,7 @@ export default function App() {
               }
             />
           </Route>
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

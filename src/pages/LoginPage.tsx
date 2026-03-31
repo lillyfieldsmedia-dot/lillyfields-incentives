@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,7 +11,9 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showReset, setShowReset] = useState(false)
   const { signIn } = useAuth()
   const navigate = useNavigate()
 
@@ -28,6 +31,28 @@ export function LoginPage() {
     }
   }
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) {
+      setError('Enter your email address above')
+      return
+    }
+    setError('')
+    setMessage('')
+    setLoading(true)
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+
+    if (resetError) {
+      setError(resetError.message)
+    } else {
+      setMessage('Password reset email sent. Check your inbox.')
+    }
+    setLoading(false)
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-sm">
@@ -36,40 +61,76 @@ export function LoginPage() {
             £
           </div>
           <CardTitle className="text-xl">Lillyfields Incentives</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
+          <CardDescription>
+            {showReset ? 'Reset your password' : 'Sign in to your account'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@lillyfields.co.uk"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
-            </Button>
-          </form>
+          {showReset ? (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@lillyfields.co.uk"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              {message && <p className="text-sm text-primary">{message}</p>}
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                {loading ? 'Sending...' : 'Send reset link'}
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setShowReset(false); setError(''); setMessage('') }}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                Back to sign in
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@lillyfields.co.uk"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign in'}
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setShowReset(true); setError('') }}
+                className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                Forgot password?
+              </button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
