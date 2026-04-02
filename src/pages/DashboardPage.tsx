@@ -16,6 +16,8 @@ interface IncentiveRow {
   amount: number
   date: string
   notes: string | null
+  area: string | null
+  shift: string | null
   created_at: string
   staff: { id: string; name: string }
   profiles: { full_name: string }
@@ -55,7 +57,7 @@ export function DashboardPage() {
   const fetchIncentives = async () => {
     let query = supabase
       .from('incentives')
-      .select('id, amount, date, notes, created_at, staff(id, name), profiles:given_by_user_id(full_name)')
+      .select('id, amount, date, notes, area, shift, created_at, staff(id, name), profiles:given_by_user_id(full_name)')
       .gte('date', payroll.start)
       .lte('date', payroll.end)
       .order('date', { ascending: false })
@@ -230,8 +232,10 @@ export function DashboardPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Staff</TableHead>
                   <TableHead>Amount</TableHead>
-                  {isFullAccess && <TableHead className="hidden sm:table-cell">Given by</TableHead>}
-                  <TableHead className="hidden md:table-cell">Notes</TableHead>
+                  <TableHead className="hidden sm:table-cell">Area</TableHead>
+                  <TableHead className="hidden sm:table-cell">Shift</TableHead>
+                  {isFullAccess && <TableHead className="hidden md:table-cell">Given by</TableHead>}
+                  <TableHead className="hidden lg:table-cell">Notes</TableHead>
                   {canEdit && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -241,10 +245,12 @@ export function DashboardPage() {
                     <TableCell className="whitespace-nowrap">{formatDate(item.date)}</TableCell>
                     <TableCell>{item.staff?.name}</TableCell>
                     <TableCell className="font-medium">{formatCurrency(item.amount)}</TableCell>
+                    <TableCell className="hidden capitalize sm:table-cell">{item.area || '—'}</TableCell>
+                    <TableCell className="hidden capitalize sm:table-cell">{item.shift || '—'}</TableCell>
                     {isFullAccess && (
-                      <TableCell className="hidden sm:table-cell">{item.profiles?.full_name}</TableCell>
+                      <TableCell className="hidden md:table-cell">{item.profiles?.full_name}</TableCell>
                     )}
-                    <TableCell className="hidden max-w-[200px] truncate md:table-cell">
+                    <TableCell className="hidden max-w-[200px] truncate lg:table-cell">
                       {item.notes || '—'}
                     </TableCell>
                     {canEdit && (

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCurrency, PAYROLL_CUTOFF_DAY, toISODate } from '@/lib/utils'
+import { AREAS, SHIFTS } from '@/lib/database.types'
 import { Download } from 'lucide-react'
 import { format, subMonths } from 'date-fns'
 import {
@@ -14,12 +15,20 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from 'recharts'
+
+const COLORS = ['#1D9E75', '#2563eb', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
 interface IncentiveRow {
   id: string
   amount: number
   date: string
+  area: string | null
+  shift: string | null
   staff: { id: string; name: string }
 }
 
@@ -32,21 +41,19 @@ export function ReportsPage() {
     fetchAll()
   }, [])
 
-  /** Build a payroll period: 28th of prev month → 27th of given month */
   function payrollPeriodForMonth(yyyy: number, mm: number): { start: string; end: string } {
-    const start = new Date(yyyy, mm - 1, 28)       // 28th of previous month
-    const end = new Date(yyyy, mm, PAYROLL_CUTOFF_DAY) // 27th of this month
+    const start = new Date(yyyy, mm - 1, 28)
+    const end = new Date(yyyy, mm, PAYROLL_CUTOFF_DAY)
     return { start: toISODate(start), end: toISODate(end) }
   }
 
   const fetchAll = async () => {
-    // Fetch 13 months back to cover 12 full payroll periods
     const from = format(subMonths(new Date(), 13), 'yyyy-MM-28')
     const to = toISODate(new Date())
 
     const { data } = await supabase
       .from('incentives')
-      .select('id, amount, date, staff(id, name)')
+      .select('id, amount, date, area, shift, staff(id, name)')
       .gte('date', from)
       .lte('date', to)
       .order('date', { ascending: true })
@@ -55,20 +62,22 @@ export function ReportsPage() {
     setLoading(false)
   }
 
-  // Build last 12 payroll periods for chart
+  // Get incentives for the selected payroll period
+  const selectedIncentives = useMemo(() => {
+    const d = new Date(selectedMonth + '-15')
+    const range = payrollPeriodForMonth(d.getFullYear(), d.getMonth())
+    return incentives.filter((inc) => inc.date >= range.start && inc.date <= range.end)
+  }, [incentives, selectedMonth])
+
+  // Monthly chart data
   const chartData = useMemo(() => {
     const periods: { key: string; label: string; start: string; end: string; total: number }[] = []
     for (let i = 11; i >= 0; i--) {
       const d = subMonths(new Date(), i)
       const yyyy = d.getFullYear()
-      const mm = d.getMonth() // 0-based
+      const mm = d.getMonth()
       const range = payrollPeriodForMonth(yyyy, mm)
-      periods.push({
-        key: format(d, 'yyyy-MM'),
-        label: format(d, 'MMM yy'),
-        ...range,
-        total: 0,
-      })
+      periods.push({ key: format(d, 'yyyy-MM'), label: format(d, 'MMM yy'), ...range, total: 0 })
     }
     for (const inc of incentives) {
       for (const p of periods) {
@@ -85,14 +94,11 @@ export function ReportsPage() {
     }))
   }, [incentives])
 
-  // Per-staff breakdown for selected payroll period
+  // Per-staff breakdown
   const staffBreakdown = useMemo(() => {
-    const d = new Date(selectedMonth + '-15')
-    const range = payrollPeriodForMonth(d.getFullYear(), d.getMonth())
-
     const map: Record<string, { name: string; count: number; total: number }> = {}
-    for (const inc of incentives) {
-      if (inc.date >= range.start && inc.date <= range.end && inc.staff) {
+    for (const inc of selectedIncentives) {
+      if (inc.staff) {
         if (!map[inc.staff.id]) {
           map[inc.staff.id] = { name: inc.staff.name, count: 0, total: 0 }
         }
@@ -101,7 +107,31 @@ export function ReportsPage() {
       }
     }
     return Object.values(map).sort((a, b) => b.total - a.total)
-  }, [incentives, selectedMonth])
+  }, [selectedIncentives])
+
+  // Area breakdown
+  const areaBreakdown = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const a of AREAS) map[a.value] = 0
+    for (const inc of selectedIncentives) {
+      if (inc.area && inc.area in map) map[inc.area] += inc.amount
+    }
+    return AREAS
+      .map((a) => ({ name: a.label, value: Math.round(map[a.value] * 100) / 100 }))
+      .filter((a) => a.value > 0)
+  }, [selectedIncentives])
+
+  // Shift breakdown
+  const shiftBreakdown = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const s of SHIFTS) map[s.value] = 0
+    for (const inc of selectedIncentives) {
+      if (inc.shift && inc.shift in map) map[inc.shift] += inc.amount
+    }
+    return SHIFTS
+      .map((s) => ({ name: s.label, value: Math.round(map[s.value] * 100) / 100 }))
+      .filter((s) => s.value > 0)
+  }, [selectedIncentives])
 
   const exportCSV = () => {
     const header = 'Staff Name,Number of Incentives,Total Amount\n'
@@ -118,15 +148,11 @@ export function ReportsPage() {
     URL.revokeObjectURL(url)
   }
 
-  // Generate month options for picker
   const monthOptions = useMemo(() => {
     const options: { value: string; label: string }[] = []
     for (let i = 0; i < 12; i++) {
       const d = subMonths(new Date(), i)
-      options.push({
-        value: format(d, 'yyyy-MM'),
-        label: format(d, 'MMMM yyyy'),
-      })
+      options.push({ value: format(d, 'yyyy-MM'), label: format(d, 'MMMM yyyy') })
     }
     return options
   }, [])
@@ -141,9 +167,20 @@ export function ReportsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">Monthly Reports</h1>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold">Monthly Reports</h1>
+        <select
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
+        >
+          {monthOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
 
-      {/* Bar chart */}
+      {/* Monthly spend chart */}
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Incentive spend — last 12 months</CardTitle>
@@ -156,9 +193,7 @@ export function ReportsPage() {
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `£${v}`} />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                <Tooltip
-                  formatter={((value: any) => [formatCurrency(Number(value)), 'Total']) as any}
-                />
+                <Tooltip formatter={((value: any) => [formatCurrency(Number(value)), 'Total']) as any} />
                 <Bar dataKey="total" fill="#1D9E75" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -166,25 +201,85 @@ export function ReportsPage() {
         </CardContent>
       </Card>
 
+      {/* Area and Shift breakdowns */}
+      <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Spend by area</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {areaBreakdown.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No area data this month</p>
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={areaBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: £${value}`}
+                    >
+                      {areaBreakdown.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={((value: any) => formatCurrency(Number(value))) as any} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Spend by shift</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {shiftBreakdown.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No shift data this month</p>
+            ) : (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={shiftBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={4}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: £${value}`}
+                    >
+                      {shiftBreakdown.map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={((value: any) => formatCurrency(Number(value))) as any} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Staff breakdown */}
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Staff breakdown</CardTitle>
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
-            >
-              {monthOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            <Button variant="outline" size="sm" onClick={exportCSV} disabled={staffBreakdown.length === 0}>
-              <Download className="mr-1 h-4 w-4" />
-              CSV
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={exportCSV} disabled={staffBreakdown.length === 0}>
+            <Download className="mr-1 h-4 w-4" />
+            CSV
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           {staffBreakdown.length === 0 ? (

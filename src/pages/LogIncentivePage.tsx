@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import type { Staff } from '@/lib/database.types'
+import type { Staff, IncentiveArea, IncentiveShift } from '@/lib/database.types'
+import { AREAS, SHIFTS } from '@/lib/database.types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Check, UserPlus, Clock } from 'lucide-react'
-import { toISODate, getPayrollPeriod, getDaysUntilCutoff } from '@/lib/utils'
+import { toISODate, getPayrollPeriod, getDaysUntilCutoff, cn } from '@/lib/utils'
 
 export function LogIncentivePage() {
   const { user, profile } = useAuth()
@@ -18,6 +19,8 @@ export function LogIncentivePage() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(toISODate(new Date()))
+  const [area, setArea] = useState<IncentiveArea | null>(null)
+  const [shift, setShift] = useState<IncentiveShift | null>(null)
   const [notes, setNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -101,6 +104,8 @@ export function LogIncentivePage() {
       amount: numAmount,
       date,
       given_by_user_id: user.id,
+      area,
+      shift,
       notes: notes.trim() || null,
     })
 
@@ -119,6 +124,8 @@ export function LogIncentivePage() {
       setSelectedStaff(null)
       setAmount('')
       setDate(toISODate(new Date()))
+      setArea(null)
+      setShift(null)
       setNotes('')
       setSuccess(false)
     }, 2000)
@@ -209,6 +216,50 @@ export function LogIncentivePage() {
               </div>
             </div>
 
+            {/* Area */}
+            <div className="space-y-2">
+              <Label>Area</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {AREAS.map((a) => (
+                  <button
+                    key={a.value}
+                    type="button"
+                    onClick={() => setArea(area === a.value ? null : a.value)}
+                    className={cn(
+                      'rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors',
+                      area === a.value
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-input bg-background hover:bg-accent'
+                    )}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Shift */}
+            <div className="space-y-2">
+              <Label>Shift</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {SHIFTS.map((s) => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => setShift(shift === s.value ? null : s.value)}
+                    className={cn(
+                      'rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors',
+                      shift === s.value
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-input bg-background hover:bg-accent'
+                    )}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Date */}
             <div className="space-y-2">
               <Label htmlFor="date">Date</Label>
@@ -233,13 +284,13 @@ export function LogIncentivePage() {
 
             {/* Notes */}
             <div className="space-y-2">
-              <Label htmlFor="notes">Reason / notes (optional)</Label>
+              <Label htmlFor="notes">Notes (optional)</Label>
               <Textarea
                 id="notes"
-                placeholder="e.g. Covered night shift at short notice"
+                placeholder="Any additional details..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
+                rows={2}
               />
             </div>
 
