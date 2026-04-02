@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { formatCurrency, formatDate, getPayrollPeriod, getDaysUntilCutoff } from '@/lib/utils'
-import { Pencil, Trash2, PoundSterling, Hash, Users, Clock } from 'lucide-react'
+import { formatCurrency, formatDate, getPayrollPeriod, getDaysUntilCutoff, cn } from '@/lib/utils'
+import { AREAS, SHIFTS } from '@/lib/database.types'
+import { Pencil, Trash2, PoundSterling, Hash, Users, Clock, MapPin, Sun } from 'lucide-react'
 
 interface IncentiveRow {
   id: string
@@ -26,7 +27,10 @@ interface IncentiveRow {
 export function DashboardPage() {
   const { role, user } = useAuth()
   const [incentives, setIncentives] = useState<IncentiveRow[]>([])
-  const [companyTotals, setCompanyTotals] = useState<{ total_amount: number; total_count: number; unique_staff: number } | null>(null)
+  const [companyTotals, setCompanyTotals] = useState<{
+    total_amount: number; total_count: number; unique_staff: number;
+    by_area: Record<string, number>; by_shift: Record<string, number>;
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [filterStaff, setFilterStaff] = useState('')
   const [filterManager, setFilterManager] = useState('')
@@ -51,7 +55,10 @@ export function DashboardPage() {
       period_start: payroll.start,
       period_end: payroll.end,
     })
-    if (data) setCompanyTotals(data as { total_amount: number; total_count: number; unique_staff: number })
+    if (data) setCompanyTotals(data as {
+      total_amount: number; total_count: number; unique_staff: number;
+      by_area: Record<string, number>; by_shift: Record<string, number>;
+    })
   }
 
   const fetchIncentives = async () => {
@@ -184,6 +191,77 @@ export function DashboardPage() {
           </Card>
         )}
       </div>
+
+      {/* Area & Shift breakdown */}
+      {companyTotals && (Object.keys(companyTotals.by_area).length > 0 || Object.keys(companyTotals.by_shift).length > 0) && (
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {Object.keys(companyTotals.by_area).length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  By area
+                </div>
+                <div className="space-y-2">
+                  {AREAS.map((a) => {
+                    const val = companyTotals.by_area[a.value] ?? 0
+                    if (val === 0) return null
+                    const pct = companyTotals.total_amount > 0 ? (val / companyTotals.total_amount) * 100 : 0
+                    return (
+                      <div key={a.value}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>{a.label}</span>
+                          <span className="font-medium">{formatCurrency(val)}</span>
+                        </div>
+                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {Object.keys(companyTotals.by_shift).length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Sun className="h-4 w-4" />
+                  By shift
+                </div>
+                <div className="space-y-2">
+                  {SHIFTS.map((s) => {
+                    const val = companyTotals.by_shift[s.value] ?? 0
+                    if (val === 0) return null
+                    const pct = companyTotals.total_amount > 0 ? (val / companyTotals.total_amount) * 100 : 0
+                    return (
+                      <div key={s.value}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>{s.label}</span>
+                          <span className="font-medium">{formatCurrency(val)}</span>
+                        </div>
+                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all',
+                              s.value === 'morning' ? 'bg-amber-400' : s.value === 'evening' ? 'bg-indigo-500' : 'bg-orange-500'
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Filters for finance/admin */}
       {isFullAccess && (
