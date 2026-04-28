@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Check, UserPlus, Clock } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Check, UserPlus, Clock, MessageSquare } from 'lucide-react'
 import { toISODate, getPayrollPeriod, getDaysUntilCutoff, cn } from '@/lib/utils'
 
 export function LogIncentivePage() {
@@ -22,8 +23,10 @@ export function LogIncentivePage() {
   const [area, setArea] = useState<IncentiveArea | null>(null)
   const [shift, setShift] = useState<IncentiveShift | null>(null)
   const [notes, setNotes] = useState('')
+  const [sendSms, setSendSms] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [smsStatus, setSmsStatus] = useState<'sent' | 'failed' | 'skipped' | null>(null)
   const [error, setError] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -115,6 +118,28 @@ export function LogIncentivePage() {
       return
     }
 
+    // Send SMS confirmation if requested and the staff member has a phone number
+    let resultStatus: 'sent' | 'failed' | 'skipped' = 'skipped'
+    if (sendSms && selectedStaff.phone_number) {
+      try {
+        const { error: smsError } = await supabase.functions.invoke('send-sms-confirmation', {
+          body: {
+            to: selectedStaff.phone_number,
+            name: selectedStaff.name.split(' ')[0],
+            amount: numAmount,
+            date,
+            given_by: profile?.full_name ?? 'a manager',
+            area,
+            shift,
+          },
+        })
+        resultStatus = smsError ? 'failed' : 'sent'
+      } catch {
+        resultStatus = 'failed'
+      }
+    }
+
+    setSmsStatus(resultStatus)
     setSuccess(true)
     setSubmitting(false)
 
@@ -127,8 +152,10 @@ export function LogIncentivePage() {
       setArea(null)
       setShift(null)
       setNotes('')
+      setSendSms(true)
       setSuccess(false)
-    }, 2000)
+      setSmsStatus(null)
+    }, 3000)
   }
 
   const payroll = getPayrollPeriod()
@@ -294,12 +321,41 @@ export function LogIncentivePage() {
               />
             </div>
 
+            {/* SMS confirmation toggle */}
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+              <MessageSquare className="h-5 w-5 shrink-0 text-primary" />
+              <div className="flex-1">
+                <Label htmlFor="send-sms" className="cursor-pointer">Send confirmation text</Label>
+                <p className="text-xs text-muted-foreground">
+                  {selectedStaff?.phone_number
+                    ? `To ${selectedStaff.phone_number}`
+                    : selectedStaff
+                    ? 'No phone number on file — add one in Staff'
+                    : 'Select a staff member first'}
+                </p>
+              </div>
+              <Switch
+                id="send-sms"
+                checked={sendSms && !!selectedStaff?.phone_number}
+                onCheckedChange={setSendSms}
+                disabled={!selectedStaff?.phone_number}
+              />
+            </div>
+
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             {success ? (
-              <div className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 py-4 text-primary">
-                <Check className="h-5 w-5" />
-                <span className="font-medium">Incentive logged successfully!</span>
+              <div className="rounded-lg bg-primary/10 p-4 text-center">
+                <div className="flex items-center justify-center gap-2 text-primary">
+                  <Check className="h-5 w-5" />
+                  <span className="font-medium">Incentive logged!</span>
+                </div>
+                {smsStatus === 'sent' && (
+                  <p className="mt-1 text-xs text-muted-foreground">Confirmation text sent</p>
+                )}
+                {smsStatus === 'failed' && (
+                  <p className="mt-1 text-xs text-amber-700">Saved, but text failed to send</p>
+                )}
               </div>
             ) : (
               <Button

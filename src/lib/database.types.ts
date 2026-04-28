@@ -25,6 +25,7 @@ export interface Staff {
   id: string
   name: string
   active: boolean
+  phone_number: string | null
   created_at: string
 }
 
