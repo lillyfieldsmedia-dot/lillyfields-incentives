@@ -169,7 +169,7 @@ export function LogIncentivePage() {
         <div className="mx-auto mb-4 flex max-w-lg items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           <Clock className="h-4 w-4 shrink-0" />
           <span>
-            <strong>{daysUntilCutoff} day{daysUntilCutoff !== 1 ? 's' : ''}</strong> until payroll cutoff (27th)
+            <strong>{daysUntilCutoff} day{daysUntilCutoff !== 1 ? 's' : ''}</strong> until payroll cutoff (21st)
           </span>
         </div>
       )}
@@ -299,7 +299,7 @@ export function LogIncentivePage() {
                 required
               />
               <p className="text-xs text-muted-foreground">
-                Must be on or before the 27th to be included in {payroll.label} payroll.
+                Must be on or before the 21st to be included in {payroll.label} payroll.
               </p>
             </div>
 

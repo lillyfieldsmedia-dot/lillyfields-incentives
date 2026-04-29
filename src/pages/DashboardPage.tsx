@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatDate, getPayrollPeriod, getDaysUntilCutoff, cn } from '@/lib/utils'
 import { AREAS, SHIFTS } from '@/lib/database.types'
-import { Pencil, Trash2, PoundSterling, Hash, Users, Clock, MapPin, Sun } from 'lucide-react'
+import { Pencil, Trash2, PoundSterling, Hash, Users, Clock, MapPin, Sun, UserCheck } from 'lucide-react'
 
 interface IncentiveRow {
   id: string
@@ -30,6 +30,7 @@ export function DashboardPage() {
   const [companyTotals, setCompanyTotals] = useState<{
     total_amount: number; total_count: number; unique_staff: number;
     by_area: Record<string, number>; by_shift: Record<string, number>;
+    by_manager: { name: string; total: number; count: number }[];
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [filterStaff, setFilterStaff] = useState('')
@@ -58,6 +59,7 @@ export function DashboardPage() {
     if (data) setCompanyTotals(data as {
       total_amount: number; total_count: number; unique_staff: number;
       by_area: Record<string, number>; by_shift: Record<string, number>;
+      by_manager: { name: string; total: number; count: number }[];
     })
   }
 
@@ -136,8 +138,8 @@ export function DashboardPage() {
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
           <Clock className="h-4 w-4 shrink-0" />
           <span>
-            <strong>{daysUntilCutoff} day{daysUntilCutoff !== 1 ? 's' : ''}</strong> until payroll cutoff (27th).
-            Incentives logged after the 27th will go into next month's payroll.
+            <strong>{daysUntilCutoff} day{daysUntilCutoff !== 1 ? 's' : ''}</strong> until payroll cutoff (21st).
+            Incentives logged after the 21st will go into next month's payroll.
           </span>
         </div>
       )}
@@ -261,6 +263,42 @@ export function DashboardPage() {
             </Card>
           )}
         </div>
+      )}
+
+      {/* Manager breakdown — admin only */}
+      {role === 'admin' && companyTotals && companyTotals.by_manager.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <UserCheck className="h-4 w-4" />
+              Incentives paid by manager
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {companyTotals.by_manager.map((m) => {
+                const pct = companyTotals.total_amount > 0 ? (m.total / companyTotals.total_amount) * 100 : 0
+                return (
+                  <div key={m.name}>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{m.name}</span>
+                      <span className="flex items-baseline gap-2">
+                        <span className="text-xs text-muted-foreground">{m.count} {m.count === 1 ? 'incentive' : 'incentives'}</span>
+                        <span className="font-medium">{formatCurrency(m.total)}</span>
+                      </span>
+                    </div>
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Filters for finance/admin */}

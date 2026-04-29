@@ -36,12 +36,13 @@ export function toISODate(date: Date): string {
 }
 
 /**
- * Payroll cutoff: 28th is payday, so the 27th is the last day
- * an incentive can be processed for the current payroll cycle.
+ * Payroll cutoff: 28th is payday. The 21st is the last day an incentive can
+ * be processed for the current payroll cycle (giving finance a week to process).
  *
- * Payroll period runs from the 28th of the previous month to the 27th of the current month.
+ * Payroll period runs from the 22nd of the previous month to the 21st of the current month.
  */
-export const PAYROLL_CUTOFF_DAY = 27
+export const PAYROLL_CUTOFF_DAY = 21
+export const PAYROLL_PERIOD_START_DAY = 22
 
 export function getPayrollPeriod(refDate: Date = new Date()): { start: string; end: string; label: string } {
   const year = refDate.getFullYear()
@@ -52,13 +53,13 @@ export function getPayrollPeriod(refDate: Date = new Date()): { start: string; e
   let periodEnd: Date
 
   if (day <= PAYROLL_CUTOFF_DAY) {
-    // We're in the period that ends on the 27th of this month
-    periodStart = new Date(year, month - 1, 28)
-    periodEnd = new Date(year, month, 27)
+    // We're in the period that ends on the 21st of this month
+    periodStart = new Date(year, month - 1, PAYROLL_PERIOD_START_DAY)
+    periodEnd = new Date(year, month, PAYROLL_CUTOFF_DAY)
   } else {
-    // We're past the 27th, so we're in the next period
-    periodStart = new Date(year, month, 28)
-    periodEnd = new Date(year, month + 1, 27)
+    // We're past the 21st, so we're in the next period
+    periodStart = new Date(year, month, PAYROLL_PERIOD_START_DAY)
+    periodEnd = new Date(year, month + 1, PAYROLL_CUTOFF_DAY)
   }
 
   const label = periodEnd.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
@@ -79,7 +80,7 @@ export function getDaysUntilCutoff(): number {
   const now = new Date()
   const day = now.getDate()
   if (day > PAYROLL_CUTOFF_DAY) {
-    // Days until the 27th of next month
+    // Days until the 21st of next month
     const nextCutoff = new Date(now.getFullYear(), now.getMonth() + 1, PAYROLL_CUTOFF_DAY)
     return Math.ceil((nextCutoff.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   }
