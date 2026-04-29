@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { formatCurrency, PAYROLL_CUTOFF_DAY, toISODate } from '@/lib/utils'
+import { formatCurrency, PAYROLL_CUTOFF_DAY, PAYROLL_PERIOD_START_DAY, toISODate } from '@/lib/utils'
 import { AREAS, SHIFTS } from '@/lib/database.types'
 import { Download } from 'lucide-react'
 import { format, subMonths } from 'date-fns'
@@ -29,7 +29,9 @@ interface IncentiveRow {
   date: string
   area: string | null
   shift: string | null
+  notes: string | null
   staff: { id: string; name: string }
+  profiles: { full_name: string } | null
 }
 
 export function ReportsPage() {
@@ -42,18 +44,18 @@ export function ReportsPage() {
   }, [])
 
   function payrollPeriodForMonth(yyyy: number, mm: number): { start: string; end: string } {
-    const start = new Date(yyyy, mm - 1, 28)
+    const start = new Date(yyyy, mm - 1, PAYROLL_PERIOD_START_DAY)
     const end = new Date(yyyy, mm, PAYROLL_CUTOFF_DAY)
     return { start: toISODate(start), end: toISODate(end) }
   }
 
   const fetchAll = async () => {
-    const from = format(subMonths(new Date(), 13), 'yyyy-MM-28')
+    const from = format(subMonths(new Date(), 13), `yyyy-MM-${PAYROLL_PERIOD_START_DAY}`)
     const to = toISODate(new Date())
 
     const { data } = await supabase
       .from('incentives')
-      .select('id, amount, date, area, shift, staff(id, name)')
+      .select('id, amount, date, area, shift, notes, staff(id, name), profiles:given_by_user_id(full_name)')
       .gte('date', from)
       .lte('date', to)
       .order('date', { ascending: true })
@@ -133,19 +135,45 @@ export function ReportsPage() {
       .filter((s) => s.value > 0)
   }, [selectedIncentives])
 
-  const exportCSV = () => {
-    const header = 'Staff Name,Number of Incentives,Total Amount\n'
-    const rows = staffBreakdown
-      .map((s) => `"${s.name}",${s.count},${s.total.toFixed(2)}`)
-      .join('\n')
-    const csv = header + rows
-    const blob = new Blob([csv], { type: 'text/csv' })
+  const csvEscape = (val: string | number | null | undefined): string => {
+    if (val == null) return ''
+    const s = String(val)
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`
+    }
+    return s
+  }
+
+  const downloadCSV = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `incentives-${selectedMonth}.csv`
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  // Row-per-incentive detailed CSV
+  const exportDetailedCSV = () => {
+    const header = 'Date,Staff Name,Amount,Area,Shift,Manager,Notes'
+    const rows = selectedIncentives.map((i) => [
+      i.date,
+      csvEscape(i.staff?.name),
+      i.amount.toFixed(2),
+      csvEscape(i.area ? i.area.charAt(0).toUpperCase() + i.area.slice(1) : ''),
+      csvEscape(i.shift ? i.shift.charAt(0).toUpperCase() + i.shift.slice(1) : ''),
+      csvEscape(i.profiles?.full_name),
+      csvEscape(i.notes),
+    ].join(','))
+    downloadCSV(`incentives-${selectedMonth}-detailed.csv`, [header, ...rows].join('\n'))
+  }
+
+  // Per-staff summary CSV
+  const exportSummaryCSV = () => {
+    const header = 'Staff Name,Number of Incentives,Total Amount'
+    const rows = staffBreakdown.map((s) => [csvEscape(s.name), s.count, s.total.toFixed(2)].join(','))
+    downloadCSV(`incentives-${selectedMonth}-summary.csv`, [header, ...rows].join('\n'))
   }
 
   const monthOptions = useMemo(() => {
@@ -274,12 +302,28 @@ export function ReportsPage() {
 
       {/* Staff breakdown */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
           <CardTitle className="text-base">Staff breakdown</CardTitle>
-          <Button variant="outline" size="sm" onClick={exportCSV} disabled={staffBreakdown.length === 0}>
-            <Download className="mr-1 h-4 w-4" />
-            CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportSummaryCSV}
+              disabled={staffBreakdown.length === 0}
+            >
+              <Download className="mr-1 h-4 w-4" />
+              Summary CSV
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exportDetailedCSV}
+              disabled={selectedIncentives.length === 0}
+            >
+              <Download className="mr-1 h-4 w-4" />
+              Detailed CSV
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {staffBreakdown.length === 0 ? (
