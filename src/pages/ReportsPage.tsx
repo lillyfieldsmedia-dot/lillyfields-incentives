@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { formatCurrency, PAYROLL_CUTOFF_DAY, PAYROLL_PERIOD_START_DAY, toISODate } from '@/lib/utils'
+import { formatCurrency, PAYROLL_CUTOFF_DAY, PAYROLL_PERIOD_START_DAY, toISODate, getPayrollPeriod } from '@/lib/utils'
 import { AREAS, SHIFTS } from '@/lib/database.types'
 import { Download } from 'lucide-react'
 import { format, subMonths } from 'date-fns'
@@ -37,7 +37,12 @@ interface IncentiveRow {
 export function ReportsPage() {
   const [incentives, setIncentives] = useState<IncentiveRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'))
+  // Default to the current payroll month (the month the cutoff falls in).
+  // e.g. on 29 Apr the current period is 22 Apr → 21 May, which is "May 2026".
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const period = getPayrollPeriod()
+    return period.end.substring(0, 7) // YYYY-MM of the period end
+  })
 
   useEffect(() => {
     fetchAll()
@@ -71,11 +76,13 @@ export function ReportsPage() {
     return incentives.filter((inc) => inc.date >= range.start && inc.date <= range.end)
   }, [incentives, selectedMonth])
 
-  // Monthly chart data
+  // Monthly chart data — anchor on the current payroll period end so labels
+  // match the dropdown / dashboard.
   const chartData = useMemo(() => {
+    const currentPeriodEnd = new Date(getPayrollPeriod().end)
     const periods: { key: string; label: string; start: string; end: string; total: number }[] = []
     for (let i = 11; i >= 0; i--) {
-      const d = subMonths(new Date(), i)
+      const d = subMonths(currentPeriodEnd, i)
       const yyyy = d.getFullYear()
       const mm = d.getMonth()
       const range = payrollPeriodForMonth(yyyy, mm)
@@ -177,9 +184,12 @@ export function ReportsPage() {
   }
 
   const monthOptions = useMemo(() => {
+    // Anchor on the current payroll period end (which IS the payroll month label).
+    // Go back 12 months from there.
+    const currentPeriodEnd = new Date(getPayrollPeriod().end)
     const options: { value: string; label: string }[] = []
     for (let i = 0; i < 12; i++) {
-      const d = subMonths(new Date(), i)
+      const d = subMonths(currentPeriodEnd, i)
       options.push({ value: format(d, 'yyyy-MM'), label: format(d, 'MMMM yyyy') })
     }
     return options
