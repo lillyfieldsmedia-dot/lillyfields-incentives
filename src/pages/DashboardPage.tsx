@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { formatCurrency, formatDate, getCurrentWeek, getPreviousWeek, cn } from '@/lib/utils'
+import { formatCurrency, formatDate, getCurrentWeek, getPreviousWeek, getCurrentMonthRange, cn } from '@/lib/utils'
 import { AREAS, SHIFTS } from '@/lib/database.types'
 import { Pencil, Trash2, PoundSterling, Hash, Users, MapPin, Sun, UserCheck, CheckCircle2, Clock } from 'lucide-react'
 
@@ -44,14 +44,27 @@ export function DashboardPage() {
 
   const week = getCurrentWeek()
   const prevWeek = getPreviousWeek()
+  const month = getCurrentMonthRange()
   const isFullAccess = role === 'finance' || role === 'admin'
   const [prevWeekPaid, setPrevWeekPaid] = useState<{ paid: boolean; paid_by_name: string | null } | null>(null)
+  const [monthTotal, setMonthTotal] = useState<number | null>(null)
 
   useEffect(() => {
     fetchIncentives()
     fetchCompanyTotals()
     fetchPrevWeekStatus()
+    fetchMonthTotal()
   }, [role, user])
+
+  const fetchMonthTotal = async () => {
+    const { data } = await supabase.rpc('get_period_totals', {
+      period_start: month.start,
+      period_end: month.end,
+    })
+    if (data) {
+      setMonthTotal((data as { total_amount: number }).total_amount)
+    }
+  }
 
   const fetchCompanyTotals = async () => {
     const { data } = await supabase.rpc('get_period_totals', {
@@ -143,12 +156,27 @@ export function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-1 flex flex-wrap items-baseline gap-x-3">
-        <h1 className="text-2xl font-bold">This week</h1>
-        <span className="text-sm text-muted-foreground">{week.label}</span>
+      {/* Dual hero: weekly (operational) + monthly (budget) */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border bg-primary/5 p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">This week</h2>
+            <span className="text-xs text-muted-foreground">{week.label}</span>
+          </div>
+          <p className="mt-1 text-3xl font-bold text-primary">{formatCurrency(companyTotal)}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-medium text-muted-foreground">This month so far</h2>
+            <span className="text-xs text-muted-foreground capitalize">
+              {new Date().toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
+            </span>
+          </div>
+          <p className="mt-1 text-3xl font-bold">
+            {monthTotal == null ? '—' : formatCurrency(monthTotal)}
+          </p>
+        </div>
       </div>
-      <p className="mb-1 text-4xl font-bold text-primary">{formatCurrency(companyTotal)}</p>
-      <p className="mb-3 text-sm text-muted-foreground">Company total</p>
 
       {/* Previous week status banner */}
       {isFullAccess && prevWeekPaid && (
@@ -169,19 +197,8 @@ export function DashboardPage() {
         )
       )}
 
-      {/* Summary cards */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <PoundSterling className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{formatCurrency(companyTotal)}</p>
-              <p className="text-xs text-muted-foreground">Company total</p>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Summary cards (this week) */}
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -189,7 +206,7 @@ export function DashboardPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{companyCount}</p>
-              <p className="text-xs text-muted-foreground">Total incentives</p>
+              <p className="text-xs text-muted-foreground">Incentives this week</p>
             </div>
           </CardContent>
         </Card>
@@ -200,7 +217,7 @@ export function DashboardPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{companyStaff}</p>
-              <p className="text-xs text-muted-foreground">Staff received</p>
+              <p className="text-xs text-muted-foreground">Staff this week</p>
             </div>
           </CardContent>
         </Card>
@@ -212,7 +229,7 @@ export function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{formatCurrency(myTotalAmount)}</p>
-                <p className="text-xs text-muted-foreground">Your total</p>
+                <p className="text-xs text-muted-foreground">Your total this week</p>
               </div>
             </CardContent>
           </Card>
