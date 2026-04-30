@@ -260,7 +260,7 @@ export function ReportsPage() {
                       outerRadius={80}
                       paddingAngle={4}
                       dataKey="value"
-                      label={({ name, value }) => `${name}: £${value}`}
+                      label={({ value }) => `£${value}`}
                     >
                       {areaBreakdown.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -294,7 +294,7 @@ export function ReportsPage() {
                       outerRadius={80}
                       paddingAngle={4}
                       dataKey="value"
-                      label={({ name, value }) => `${name}: £${value}`}
+                      label={({ value }) => `£${value}`}
                     >
                       {shiftBreakdown.map((_, i) => (
                         <Cell key={i} fill={COLORS[i % COLORS.length]} />
