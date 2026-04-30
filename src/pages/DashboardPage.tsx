@@ -79,18 +79,30 @@ export function DashboardPage() {
   }
 
   const fetchPrevWeekStatus = async () => {
-    const { data } = await supabase
+    // Two-step: fetch the timesheet row first, then look up the profile name.
+    // Avoids relying on PostgREST FK join syntax which can fail silently.
+    const { data: ts } = await supabase
       .from('timesheets')
-      .select('paid_by_user_id, profiles:paid_by_user_id(full_name)')
+      .select('paid_by_user_id')
       .eq('week_start', prevWeek.start)
       .maybeSingle()
-    if (data) {
-      const profilesField = (data as { profiles?: { full_name: string } | { full_name: string }[] | null }).profiles
-      const profileObj = Array.isArray(profilesField) ? profilesField[0] : profilesField
-      setPrevWeekPaid({ paid: true, paid_by_name: profileObj?.full_name ?? null })
-    } else {
+
+    if (!ts) {
       setPrevWeekPaid({ paid: false, paid_by_name: null })
+      return
     }
+
+    const paidByUserId = (ts as { paid_by_user_id: string }).paid_by_user_id
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', paidByUserId)
+      .maybeSingle()
+
+    setPrevWeekPaid({
+      paid: true,
+      paid_by_name: (profile as { full_name: string } | null)?.full_name ?? null,
+    })
   }
 
   const fetchIncentives = async () => {
