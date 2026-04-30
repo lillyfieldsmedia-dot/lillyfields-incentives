@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   BarChart3,
+  Receipt,
   Users,
   UserCog,
   LogOut,
@@ -37,6 +38,7 @@ export function AppLayout() {
 
   const canLog = role === 'manager' || role === 'coordinator' || role === 'admin'
   const canViewReports = role === 'finance' || role === 'admin'
+  const canViewTimesheets = role === 'finance' || role === 'admin'
   const isAdmin = role === 'admin'
 
   const handleSignOut = async () => {
@@ -47,6 +49,7 @@ export function AppLayout() {
   const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard', show: true },
     { to: '/log', icon: PlusCircle, label: 'Log', show: canLog },
+    { to: '/timesheets', icon: Receipt, label: 'Pay', show: canViewTimesheets },
     { to: '/reports', icon: BarChart3, label: 'Reports', show: canViewReports },
     { to: '/staff', icon: Users, label: 'Staff', show: isAdmin },
     { to: '/users', icon: UserCog, label: 'Users', show: isAdmin },

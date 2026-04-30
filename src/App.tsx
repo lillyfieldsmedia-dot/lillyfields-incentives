@@ -8,6 +8,7 @@ import { LogIncentivePage } from '@/pages/LogIncentivePage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { StaffPage } from '@/pages/StaffPage'
 import { UsersPage } from '@/pages/UsersPage'
+import { TimesheetsPage } from '@/pages/TimesheetsPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,14 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={['manager', 'coordinator', 'admin']}>
                   <LogIncentivePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/timesheets"
+              element={
+                <ProtectedRoute allowedRoles={['finance', 'admin']}>
+                  <TimesheetsPage />
                 </ProtectedRoute>
               }
             />

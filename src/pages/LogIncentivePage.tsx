@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
-import { Check, UserPlus, Clock, MessageSquare } from 'lucide-react'
-import { toISODate, getPayrollPeriod, getDaysUntilCutoff, cn } from '@/lib/utils'
+import { Check, UserPlus, MessageSquare } from 'lucide-react'
+import { toISODate, cn } from '@/lib/utils'
 
 export function LogIncentivePage() {
   const { user, profile } = useAuth()
@@ -158,21 +158,9 @@ export function LogIncentivePage() {
     }, 3000)
   }
 
-  const payroll = getPayrollPeriod()
-  const daysUntilCutoff = getDaysUntilCutoff()
-
   return (
     <div>
       <h1 className="mb-4 text-2xl font-bold md:mb-6">Log Incentive</h1>
-
-      {daysUntilCutoff <= 5 && (
-        <div className="mx-auto mb-4 flex max-w-lg items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <Clock className="h-4 w-4 shrink-0" />
-          <span>
-            <strong>{daysUntilCutoff} day{daysUntilCutoff !== 1 ? 's' : ''}</strong> until payroll cutoff (21st)
-          </span>
-        </div>
-      )}
 
       <Card className="mx-auto max-w-lg">
         <CardHeader>
@@ -294,13 +282,9 @@ export function LogIncentivePage() {
                 id="date"
                 type="date"
                 value={date}
-                max={payroll.end}
                 onChange={(e) => setDate(e.target.value)}
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Must be on or before the 21st to be included in {payroll.label} payroll.
-              </p>
             </div>
 
             {/* Given by */}

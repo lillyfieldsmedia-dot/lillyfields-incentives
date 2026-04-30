@@ -8,9 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { formatCurrency, formatDate, getPayrollPeriod, getDaysUntilCutoff, cn } from '@/lib/utils'
+import { formatCurrency, formatDate, getCurrentWeek, getPreviousWeek, cn } from '@/lib/utils'
 import { AREAS, SHIFTS } from '@/lib/database.types'
-import { Pencil, Trash2, PoundSterling, Hash, Users, Clock, MapPin, Sun, UserCheck } from 'lucide-react'
+import { Pencil, Trash2, PoundSterling, Hash, Users, MapPin, Sun, UserCheck, CheckCircle2, Clock } from 'lucide-react'
 
 interface IncentiveRow {
   id: string
@@ -42,19 +42,21 @@ export function DashboardPage() {
   const [editNotes, setEditNotes] = useState('')
   const [deleteItem, setDeleteItem] = useState<IncentiveRow | null>(null)
 
-  const payroll = getPayrollPeriod()
-  const daysUntilCutoff = getDaysUntilCutoff()
+  const week = getCurrentWeek()
+  const prevWeek = getPreviousWeek()
   const isFullAccess = role === 'finance' || role === 'admin'
+  const [prevWeekPaid, setPrevWeekPaid] = useState<{ paid: boolean; paid_by_name: string | null } | null>(null)
 
   useEffect(() => {
     fetchIncentives()
     fetchCompanyTotals()
+    fetchPrevWeekStatus()
   }, [role, user])
 
   const fetchCompanyTotals = async () => {
     const { data } = await supabase.rpc('get_period_totals', {
-      period_start: payroll.start,
-      period_end: payroll.end,
+      period_start: week.start,
+      period_end: week.end,
     })
     if (data) setCompanyTotals(data as {
       total_amount: number; total_count: number; unique_staff: number;
@@ -63,12 +65,27 @@ export function DashboardPage() {
     })
   }
 
+  const fetchPrevWeekStatus = async () => {
+    const { data } = await supabase
+      .from('timesheets')
+      .select('paid_by_user_id, profiles:paid_by_user_id(full_name)')
+      .eq('week_start', prevWeek.start)
+      .maybeSingle()
+    if (data) {
+      const profilesField = (data as { profiles?: { full_name: string } | { full_name: string }[] | null }).profiles
+      const profileObj = Array.isArray(profilesField) ? profilesField[0] : profilesField
+      setPrevWeekPaid({ paid: true, paid_by_name: profileObj?.full_name ?? null })
+    } else {
+      setPrevWeekPaid({ paid: false, paid_by_name: null })
+    }
+  }
+
   const fetchIncentives = async () => {
     let query = supabase
       .from('incentives')
       .select('id, amount, date, notes, area, shift, created_at, staff(id, name), profiles:given_by_user_id(full_name)')
-      .gte('date', payroll.start)
-      .lte('date', payroll.end)
+      .gte('date', week.start)
+      .lte('date', week.end)
       .order('date', { ascending: false })
 
     if (!isFullAccess && user) {
@@ -127,21 +144,29 @@ export function DashboardPage() {
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-baseline gap-x-3">
-        <h1 className="text-2xl font-bold">{payroll.label}</h1>
-        <span className="text-sm text-muted-foreground">
-          Cutoff: {formatDate(payroll.end)}
-        </span>
+        <h1 className="text-2xl font-bold">This week</h1>
+        <span className="text-sm text-muted-foreground">{week.label}</span>
       </div>
       <p className="mb-1 text-4xl font-bold text-primary">{formatCurrency(companyTotal)}</p>
-      <p className="mb-2 text-sm text-muted-foreground">Company total</p>
-      {daysUntilCutoff <= 5 && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          <Clock className="h-4 w-4 shrink-0" />
-          <span>
-            <strong>{daysUntilCutoff} day{daysUntilCutoff !== 1 ? 's' : ''}</strong> until payroll cutoff (21st).
-            Incentives logged after the 21st will go into next month's payroll.
-          </span>
-        </div>
+      <p className="mb-3 text-sm text-muted-foreground">Company total</p>
+
+      {/* Previous week status banner */}
+      {isFullAccess && prevWeekPaid && (
+        prevWeekPaid.paid ? (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>
+              Last week paid{prevWeekPaid.paid_by_name ? ` by ${prevWeekPaid.paid_by_name}` : ''}.
+            </span>
+          </div>
+        ) : (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>
+              Last week ({prevWeek.label}) not yet paid — go to Timesheets to mark it paid.
+            </span>
+          </div>
+        )
       )}
 
       {/* Summary cards */}
@@ -340,7 +365,7 @@ export function DashboardPage() {
         </CardHeader>
         <CardContent className="p-0">
           {filtered.length === 0 ? (
-            <p className="p-6 text-center text-muted-foreground">No incentives recorded this period.</p>
+            <p className="p-6 text-center text-muted-foreground">No incentives recorded this week.</p>
           ) : (
             <Table>
               <TableHeader>

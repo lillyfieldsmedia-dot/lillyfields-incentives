@@ -86,3 +86,48 @@ export function getDaysUntilCutoff(): number {
   }
   return PAYROLL_CUTOFF_DAY - day
 }
+
+/**
+ * Weekly pay periods: Mon→Sun, paid every Monday for the previous 7 days.
+ * Use ISO weekday (1=Mon, 7=Sun).
+ */
+
+/** Returns the Monday of the week containing the given date. */
+export function getWeekStart(date: Date): Date {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  const isoDay = d.getDay() === 0 ? 7 : d.getDay() // JS: 0=Sun, 1=Mon...; ISO: 1=Mon...7=Sun
+  d.setDate(d.getDate() - (isoDay - 1))
+  return d
+}
+
+/** Returns the Sunday of the week containing the given date. */
+export function getWeekEnd(date: Date): Date {
+  const start = getWeekStart(date)
+  start.setDate(start.getDate() + 6)
+  return start
+}
+
+/** Returns the Mon→Sun range for the week containing the given date. */
+export function getWeekRange(date: Date = new Date()): { start: string; end: string; label: string } {
+  const start = getWeekStart(date)
+  const end = getWeekEnd(date)
+  const label = `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  return {
+    start: toISODate(start),
+    end: toISODate(end),
+    label,
+  }
+}
+
+/** Current Mon→Sun pay week. */
+export function getCurrentWeek(): { start: string; end: string; label: string } {
+  return getWeekRange(new Date())
+}
+
+/** The previous (now-completed) Mon→Sun week. */
+export function getPreviousWeek(): { start: string; end: string; label: string } {
+  const d = new Date()
+  d.setDate(d.getDate() - 7)
+  return getWeekRange(d)
+}
