@@ -19,6 +19,7 @@ interface IncentiveRow {
   notes: string | null
   area: string | null
   shift: string | null
+  given_by_user_id: string
   created_at: string
   staff: { id: string; name: string }
   profiles: { full_name: string }
@@ -106,18 +107,15 @@ export function DashboardPage() {
   }
 
   const fetchIncentives = async () => {
-    let query = supabase
+    // Everyone now sees the company-wide list of entries for the current week.
+    // Edit/delete is still restricted via the existing per-row checks below.
+    const { data } = await supabase
       .from('incentives')
-      .select('id, amount, date, notes, area, shift, created_at, staff(id, name), profiles:given_by_user_id(full_name)')
+      .select('id, amount, date, notes, area, shift, given_by_user_id, created_at, staff(id, name), profiles:given_by_user_id(full_name)')
       .gte('date', week.start)
       .lte('date', week.end)
       .order('date', { ascending: false })
 
-    if (!isFullAccess && user) {
-      query = query.eq('given_by_user_id', user.id)
-    }
-
-    const { data } = await query
     if (data) setIncentives(data as unknown as IncentiveRow[])
     setLoading(false)
   }
@@ -319,8 +317,8 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Manager breakdown — admin only */}
-      {role === 'admin' && companyTotals && companyTotals.by_manager.length > 0 && (
+      {/* Manager breakdown — visible to all so coordinators can see who's offering what */}
+      {companyTotals && companyTotals.by_manager.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -355,41 +353,39 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {/* Filters for finance/admin */}
-      {isFullAccess && (
-        <Card className="mb-4">
-          <CardContent className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-4">
-            <Input
-              placeholder="Filter by staff..."
-              value={filterStaff}
-              onChange={(e) => setFilterStaff(e.target.value)}
-            />
-            <Input
-              placeholder="Filter by manager..."
-              value={filterManager}
-              onChange={(e) => setFilterManager(e.target.value)}
-            />
-            <Input
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-              placeholder="From date"
-            />
-            <Input
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-              placeholder="To date"
-            />
-          </CardContent>
-        </Card>
-      )}
+      {/* Filters — visible to everyone now that all roles see all entries */}
+      <Card className="mb-4">
+        <CardContent className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-4">
+          <Input
+            placeholder="Filter by staff..."
+            value={filterStaff}
+            onChange={(e) => setFilterStaff(e.target.value)}
+          />
+          <Input
+            placeholder="Filter by manager..."
+            value={filterManager}
+            onChange={(e) => setFilterManager(e.target.value)}
+          />
+          <Input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            placeholder="From date"
+          />
+          <Input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            placeholder="To date"
+          />
+        </CardContent>
+      </Card>
 
       {/* Entries table */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            {isFullAccess ? 'All entries' : 'Your entries'} ({filtered.length})
+            All entries ({filtered.length})
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -404,7 +400,7 @@ export function DashboardPage() {
                   <TableHead>Amount</TableHead>
                   <TableHead className="hidden sm:table-cell">Area</TableHead>
                   <TableHead className="hidden sm:table-cell">Shift</TableHead>
-                  {isFullAccess && <TableHead className="hidden md:table-cell">Given by</TableHead>}
+                  <TableHead className="hidden md:table-cell">Given by</TableHead>
                   <TableHead className="hidden lg:table-cell">Notes</TableHead>
                   {canEdit && <TableHead className="w-20"></TableHead>}
                 </TableRow>
@@ -417,40 +413,37 @@ export function DashboardPage() {
                     <TableCell className="font-medium">{formatCurrency(item.amount)}</TableCell>
                     <TableCell className="hidden capitalize sm:table-cell">{item.area || '—'}</TableCell>
                     <TableCell className="hidden capitalize sm:table-cell">{item.shift || '—'}</TableCell>
-                    {isFullAccess && (
-                      <TableCell className="hidden md:table-cell">{item.profiles?.full_name}</TableCell>
-                    )}
+                    <TableCell className="hidden md:table-cell">{item.profiles?.full_name}</TableCell>
                     <TableCell className="hidden max-w-[200px] truncate lg:table-cell">
                       {item.notes || '—'}
                     </TableCell>
                     {canEdit && (
                       <TableCell>
                         <div className="flex gap-1">
-                          {(role === 'admin' || item.staff) && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  setEditItem(item)
-                                  setEditAmount(String(item.amount))
-                                  setEditNotes(item.notes ?? '')
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              {role === 'admin' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive"
-                                  onClick={() => setDeleteItem(item)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </>
+                          {/* Managers/coordinators can only edit their own entries; admin can edit any */}
+                          {(role === 'admin' || item.given_by_user_id === user?.id) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setEditItem(item)
+                                setEditAmount(String(item.amount))
+                                setEditNotes(item.notes ?? '')
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {role === 'admin' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => setDeleteItem(item)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </TableCell>
