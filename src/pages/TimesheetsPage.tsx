@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { ChevronLeft, CheckCircle2, Clock, Lock } from 'lucide-react'
+import { ChevronLeft, CheckCircle2, Clock, Lock, Hourglass } from 'lucide-react'
 
 interface TimesheetSummary {
   week_start: string
@@ -15,7 +15,7 @@ interface TimesheetSummary {
   total_amount: number
   total_count: number
   unique_staff: number
-  status: 'due' | 'paid'
+  status: 'due' | 'paid' | 'open'
   paid_at: string | null
   paid_by_name: string | null
 }
@@ -105,6 +105,10 @@ export function TimesheetsPage() {
   if (selected) {
     const total = breakdown.reduce((s, r) => s + Number(r.total_amount), 0)
     const isPaid = selected.status === 'paid'
+    const isOpen = selected.status === 'open'
+    // The Monday after the week ends — when the timesheet becomes payable
+    const dueDate = new Date(selected.week_end)
+    dueDate.setDate(dueDate.getDate() + 1)
 
     return (
       <div>
@@ -137,6 +141,16 @@ export function TimesheetsPage() {
               </p>
             </div>
             <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </div>
+        ) : isOpen ? (
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <Hourglass className="h-5 w-5 shrink-0 text-slate-600" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-slate-900">Open — week still in progress</p>
+              <p className="text-slate-600">
+                Becomes due on {dueDate.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -204,8 +218,8 @@ export function TimesheetsPage() {
           </CardContent>
         </Card>
 
-        {/* Mark paid button */}
-        {!isPaid && canMarkPaid && breakdown.length > 0 && (
+        {/* Mark paid button — only when the week is fully complete and unpaid */}
+        {!isPaid && !isOpen && canMarkPaid && breakdown.length > 0 && (
           <Button
             size="lg"
             className="w-full text-base"
@@ -277,9 +291,14 @@ export function TimesheetsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-primary">{formatCurrency(Number(ts.total_amount))}</p>
-                  <Badge variant={ts.status === 'paid' ? 'default' : 'secondary'} className="mt-1 capitalize">
+                  <Badge
+                    variant={ts.status === 'paid' ? 'default' : 'secondary'}
+                    className="mt-1 capitalize"
+                  >
                     {ts.status === 'paid' ? (
                       <><CheckCircle2 className="mr-1 h-3 w-3" />Paid</>
+                    ) : ts.status === 'open' ? (
+                      <><Hourglass className="mr-1 h-3 w-3" />Open</>
                     ) : (
                       <><Clock className="mr-1 h-3 w-3" />Due</>
                     )}
