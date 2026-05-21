@@ -37,7 +37,7 @@ export function AppLayout() {
   const role = profile?.role
 
   const canLog = role === 'manager' || role === 'coordinator' || role === 'admin'
-  const canViewReports = role === 'finance' || role === 'admin'
+  const canViewReports = role === 'manager' || role === 'coordinator' || role === 'finance' || role === 'admin'
   const canViewTimesheets = role === 'finance' || role === 'admin'
   const isAdmin = role === 'admin'
 
