@@ -47,7 +47,12 @@ export function DashboardPage() {
   const prevWeek = getPreviousWeek()
   const month = getCurrentMonthRange()
   const isFullAccess = role === 'finance' || role === 'admin'
-  const [prevWeekPaid, setPrevWeekPaid] = useState<{ paid: boolean; paid_by_name: string | null } | null>(null)
+  const [prevWeekPaid, setPrevWeekPaid] = useState<{
+    status: 'due' | 'partial' | 'paid'
+    paid_by_name: string | null
+    owed_amount: number
+    total_amount: number
+  } | null>(null)
   const [monthTotal, setMonthTotal] = useState<number | null>(null)
 
   useEffect(() => {
@@ -80,29 +85,28 @@ export function DashboardPage() {
   }
 
   const fetchPrevWeekStatus = async () => {
-    // Two-step: fetch the timesheet row first, then look up the profile name.
-    // Avoids relying on PostgREST FK join syntax which can fail silently.
-    const { data: ts } = await supabase
-      .from('timesheets')
-      .select('paid_by_user_id')
-      .eq('week_start', prevWeek.start)
-      .maybeSingle()
+    // Use the timesheets summary RPC and pick out the previous week.
+    const { data } = await supabase.rpc('get_timesheets_summary', { weeks_back: 4 })
+    if (!data) return
+    const summary = (data as {
+      week_start: string
+      status: 'open' | 'due' | 'partial' | 'paid'
+      paid_amount: number
+      total_amount: number
+      owed_amount: number
+      last_paid_by_name: string | null
+    }[]).find((t) => t.week_start === prevWeek.start)
 
-    if (!ts) {
-      setPrevWeekPaid({ paid: false, paid_by_name: null })
+    if (!summary || summary.status === 'open') {
+      // Either no incentives logged that week, or still in progress (shouldn't happen for prev week)
+      setPrevWeekPaid(null)
       return
     }
-
-    const paidByUserId = (ts as { paid_by_user_id: string }).paid_by_user_id
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', paidByUserId)
-      .maybeSingle()
-
     setPrevWeekPaid({
-      paid: true,
-      paid_by_name: (profile as { full_name: string } | null)?.full_name ?? null,
+      status: summary.status as 'due' | 'partial' | 'paid',
+      paid_by_name: summary.last_paid_by_name,
+      owed_amount: Number(summary.owed_amount),
+      total_amount: Number(summary.total_amount),
     })
   }
 
@@ -190,18 +194,25 @@ export function DashboardPage() {
 
       {/* Previous week status banner */}
       {isFullAccess && prevWeekPaid && (
-        prevWeekPaid.paid ? (
+        prevWeekPaid.status === 'paid' ? (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>
-              Last week paid{prevWeekPaid.paid_by_name ? ` by ${prevWeekPaid.paid_by_name}` : ''}.
+              Last week fully paid{prevWeekPaid.paid_by_name ? ` (last payment by ${prevWeekPaid.paid_by_name})` : ''}.
+            </span>
+          </div>
+        ) : prevWeekPaid.status === 'partial' ? (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <Clock className="h-4 w-4 shrink-0" />
+            <span>
+              Last week partially paid — <strong>{formatCurrency(prevWeekPaid.owed_amount)}</strong> still owed.
             </span>
           </div>
         ) : (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
             <Clock className="h-4 w-4 shrink-0" />
             <span>
-              Last week ({prevWeek.label}) not yet paid — go to Timesheets to mark it paid.
+              Last week ({prevWeek.label}) not yet paid — <strong>{formatCurrency(prevWeekPaid.total_amount)}</strong> due. Go to Timesheets to pay.
             </span>
           </div>
         )
